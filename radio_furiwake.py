@@ -211,6 +211,22 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='ラジオ録音ファイルを整理するスクリプト')
     parser.add_argument('--dry-run', action='store_true', help='ドライランモードで実行（実際にファイルは移動しません）')
     parser.add_argument('--max-retries', type=int, default=3, help='セッション再取得の最大試行回数')
+    parser.add_argument('--refresh-session', action='store_true', help='Google Driveのセッションを再取得します')
     args = parser.parse_args()
 
-    organize_files(dry_run=args.dry_run, max_retries=args.max_retries)
+    if args.refresh_session:
+        log_message("Google Driveのセッション再取得を開始します...")
+        try:
+            drive, gauth = get_drive_session()
+            if drive and gauth:
+                log_message("Google Driveのセッションが正常に取得/再取得されました。")
+                # 認証情報を保存する (settings.yaml の save_credentials が True の場合)
+                if gauth.settings.get('save_credentials', False):
+                    gauth.SaveCredentialsFile(gauth.settings.get('save_credentials_file', 'credentials.json'))
+                    log_message(f"認証情報を {gauth.settings.get('save_credentials_file', 'credentials.json')} に保存しました。")
+            else:
+                log_message("Google Driveのセッション取得に失敗しました。")
+        except Exception as e:
+            log_message(f"セッション再取得中にエラーが発生しました: {str(e)}")
+    else:
+        organize_files(dry_run=args.dry_run, max_retries=args.max_retries)
