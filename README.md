@@ -45,6 +45,28 @@ python radio_furiwake.py
     このモードでは、実際にファイルは移動されず、ログに移動予定のファイルとフォルダが記録されます。
 -   `--max-retries <回数>`: Google Drive とのセッションが切れた場合の再試行の最大回数を指定します。デフォルトは `3` 回です。
 
+## GitHub Actions による自動実行
+
+このリポジトリには、`Move_Radigo-Files` という名前の GitHub Actions ワークフローが含まれており、スクリプトを自動実行することができます。
+
+### 実行トリガー
+
+-   **手動実行 (`workflow_dispatch`)**: GitHub の Actions タブから手動でワークフローを実行できます。
+    -   `dry_run` パラメータ: 手動実行時に `true` を指定すると、ドライランモードで実行されます。デフォルトは `false` です。
+-   **スケジュール実行 (コメントアウト中)**: `.github/workflows/move-radigo-files.yml` ファイル内のスケジュール実行の設定を有効にすることで、定期的にスクリプトを実行することも可能です (例: 毎日午前9時 JST)。
+
+### 必要な Secrets
+
+GitHub Actions でスクリプトを実行するためには、以下の Secrets をリポジトリに設定する必要があります。
+
+-   `GOOGLE_CLIENT_ID`: Google Cloud Platform で作成した OAuth 2.0 クライアント ID。
+-   `GOOGLE_CLIENT_SECRET`: Google Cloud Platform で作成した OAuth 2.0 クライアントシークレット。
+-   `OUTPUT_FOLDER_ID`: Radigo の録音ファイルが保存されている Google Drive フォルダの ID。
+-   `TARGET_FOLDER_PATH`: Google Drive 内での基本的な保存先パス。
+-   `GOOGLE_CREDENTIALS_JSON`: Google Drive API の認証に使用する `credentials.json` の内容。これは、初回ローカル実行時に生成される `credentials.json` の中身をコピーして設定します。
+
+これらの Secrets は、リポジトリの「Settings」 > 「Secrets and variables」 > 「Actions」から設定できます。
+
 ## ログ
 
 スクリプトの実行中に発生したイベントは、ログファイルに記録されます。
@@ -58,4 +80,4 @@ python radio_furiwake.py
 ## 注意事項
 
 -   初回実行時には、ブラウザが起動し Google アカウントでの認証が求められます。認証を許可してください。
--   `settings.yaml` に認証情報が保存されるため、取り扱いに注意してください。
+-   `client_secrets.json`、`settings.yaml` および `credentials.json` には認証情報が保存されるため、これらのファイルの取り扱いには十分注意してください。特に、Gitリポジトリに誤ってコミットしないように `.gitignore` に追加することを推奨します。
