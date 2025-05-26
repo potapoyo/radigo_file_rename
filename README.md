@@ -1,4 +1,4 @@
-# radigo_relocation
+# radigo_file_rename
 
 Radigoで録音したファイルをGoogle Driveの所定の場所に移動するスクリプトです。
 
