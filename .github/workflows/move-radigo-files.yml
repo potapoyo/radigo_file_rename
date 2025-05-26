@@ -49,9 +49,13 @@ jobs:
         echo "get_refresh_token: True" >> settings.yaml
         echo "oauth_scope:" >> settings.yaml
         echo "  - https://www.googleapis.com/auth/drive" >> settings.yaml
+        echo "output_folder_id: ${{ secrets.OUTPUT_FOLDER_ID }}" >> settings.yaml
+        echo "target_folder_path: ${{ secrets.TARGET_FOLDER_PATH }}" >> settings.yaml
       env:
         GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
         GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        OUTPUT_FOLDER_ID: ${{ secrets.OUTPUT_FOLDER_ID }}
+        TARGET_FOLDER_PATH: ${{ secrets.TARGET_FOLDER_PATH }}
 
     - name: Create credentials.json
       run: |
