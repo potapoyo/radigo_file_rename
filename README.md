@@ -1,83 +1,114 @@
-# radigo_file_rename
+# Radigo File Renamer & Organizer
 
-Radigoで録音したファイルをGoogle Driveの所定の場所に移動するスクリプトです。
+このプロジェクトは、ラジオ録音ファイル（.aac形式）をGoogle Drive上で自動的に整理するためのPythonスクリプトです。ファイル名に含まれる日時と放送局コードを基に、設定ファイルに従って適切なフォルダにファイルを移動します。
 
-## 要件
+## 主な機能
 
-- Python 3 以上
-- pydrive2 ライブラリ
+*   **ファイル整理**: Google Drive上の指定されたフォルダ内にある `.aac` ファイルを、放送局や番組ごとに分類されたフォルダへ移動します。
+*   **設定ベースの動作**: `settings.yaml` ファイルを通じて、Google DriveのフォルダIDや基本的な保存パス、認証情報などを設定できます。
+*   **Google Drive連携**: PyDrive2ライブラリを使用してGoogle Drive APIと連携し、ファイルのリスト取得、フォルダ作成、ファイル移動を行います。
+*   **認証管理**: OAuth 2.0認証に対応し、認証エラーやアクセストークンのリフレッシュエラー発生時には再認証や再試行を行います。
+*   **ドライランモード**: `--dry-run` オプションを使用することで、実際にファイルを移動せずに処理の流れを確認できます。
+*   **セッション更新**: `--refresh-session` オプションを使用して、Google Driveの認証セッションを強制的に更新できます。
+*   **ログ出力**: 処理の進行状況やエラー情報をログファイル (`logs/` ディレクトリ内) に記録します。
+*   **GitHub Actions連携**: `.github/workflows/move-radigo-files.yml` により、GitHub Actions上で定期実行または手動実行が可能です。
 
-## 事前準備
+## 必要なもの
 
-1.  **必要なライブラリをインストールします。**
+### ローカル実行時
 
-    ```sh
-    pip install pydrive2
+*   Python 3.x
+*   PyDrive2 (`pip install PyDrive2`)
+*   Google Cloud Platform プロジェクト
+    *   Google Drive API の有効化
+    *   OAuth 2.0 クライアントIDとクライアントシークレット (通常 `client_secrets.json` としてダウンロード)
+
+### GitHub Actions実行時
+
+*   リポジトリのSecretsに以下の情報を設定する必要があります。
+    *   `GOOGLE_CLIENT_ID`: Google Cloud PlatformのクライアントID
+    *   `GOOGLE_CLIENT_SECRET`: Google Cloud Platformのクライアントシークレット
+    *   `OUTPUT_FOLDER_ID`: Google Driveの処理対象ファイルが存在するフォルダID
+    *   `TARGET_FOLDER_PATH`: Google Drive内の基本的な保存先パス (例: `audio/radio/`)
+    *   `GOOGLE_CREDENTIALS_JSON`: Google Drive APIの認証情報 (通常 `credentials.json` の内容)
+
+## セットアップ (ローカル実行時)
+
+1.  **リポジトリのクローン**:
+    ```bash
+    git clone https://github.com/your_username/radigo_file_rename.git
+    cd radigo_file_rename
     ```
-
-2.  **Google Cloud Platform で OAuth 2.0 クライアント ID を作成します。**
-    *   [Google Cloud Console](https://console.cloud.google.com/) にアクセスします。
-    *   新しいプロジェクトを作成するか、既存のプロジェクトを選択します。
-    *   「APIとサービス」 > 「認証情報」に移動します。
-    *   「認証情報を作成」 > 「OAuth クライアント ID」を選択します。
-    *   アプリケーションの種類として「デスクトップアプリ」を選択し、名前を付けます。
-    *   作成後、JSON ファイルをダウンロードし、`client_secrets.json` という名前でこのプロジェクトのルートディレクトリに保存します。
-
-3.  **設定ファイルを準備します。**
-    *   `settings.yaml.sample` をコピーして `settings.yaml` を作成します。
-    *   `settings.yaml` 内の各項目を以下のように設定します。
-        *   `client_config_file`: 上記で準備した `client_secrets.json` のパスを指定します (通常は `client_secrets.json` のままで問題ありません)。
-        *   `output_folder_id`: Google Drive 上で、Radigo の録音ファイルが保存されているフォルダの ID を指定します。このフォルダ内のファイルが整理対象となります。フォルダ ID は、Google Drive で該当フォルダを開いた際の URL (`https://drive.google.com/drive/folders/ここに表示されるID`) から取得できます。
-        *   `target_folder_path`: Google Drive 内での基本的な保存先パスを指定します。デフォルトは `audio/radio/` です。このパスの配下に、放送局ごとのフォルダが作成されます。
-        *   必要に応じて、`save_credentials_file` や `get_refresh_token` の設定を行ってください。
+2.  **依存関係のインストール**:
+    ```bash
+    pip install PyDrive2
+    ```
+3.  **`client_secrets.json` の準備**:
+    Google Cloud PlatformからダウンロードしたOAuth 2.0クライアントIDのJSONファイルをプロジェクトルートに配置するか、`settings.yaml` でパスを指定します。
+4.  **`settings.yaml` の作成**:
+    `settings.yaml.sample` をコピーして `settings.yaml` を作成し、環境に合わせて編集します。
+    ```yaml
+    client_config_backend: file # または 'settings' (GitHub Actionsでは 'settings' を使用)
+    output_folder_id: YOUR_GOOGLE_DRIVE_OUTPUT_FOLDER_ID
+    target_folder_path: audio/radio/ # Google Drive内の基本的な保存先パス (末尾に / を推奨)
+    # client_config_backend: file の場合
+    client_config_file: client_secrets.json # client_secrets.jsonへのパス
+    # client_config_backend: settings の場合 (GitHub Actionsで使用)
+    # client_config:
+    #   client_id: "YOUR_CLIENT_ID"
+    #   client_secret: "YOUR_CLIENT_SECRET"
+    save_credentials: True
+    save_credentials_backend: file
+    save_credentials_file: credentials.json # 認証情報を保存するファイル名
+    get_refresh_token: True
+    oauth_scope:
+      - https://www.googleapis.com/auth/drive
+    ```
+    初回実行時にはブラウザが起動し、Googleアカウントでの認証が求められます。認証後、`credentials.json` (または `save_credentials_file` で指定したファイル名) が作成され、次回以降の認証に使用されます。
 
 ## 実行方法
 
-以下のコマンドでスクリプトを実行します。
+### ローカルでの実行
 
-```sh
-python radio_furiwake.py
-```
+*   **通常実行**:
+    ```bash
+    python radio_furiwake.py
+    ```
+*   **ドライランモード**:
+    ```bash
+    python radio_furiwake.py --dry-run
+    ```
+*   **セッション更新**:
+    Google Driveの認証情報を更新したい場合。
+    ```bash
+    python radio_furiwake.py --refresh-session
+    ```
+    このコマンド実行後、再度認証フローが開始され、新しい `credentials.json` が保存されます。
 
-### オプション
+### GitHub Actionsでの実行
 
--   `--dry-run`: ドライランモードで実行します。
-    このモードでは、実際にファイルは移動されず、ログに移動予定のファイルとフォルダが記録されます。
--   `--max-retries <回数>`: Google Drive とのセッションが切れた場合の再試行の最大回数を指定します。デフォルトは `3` 回です。
+*   リポジトリの「Actions」タブから「Move_Radigo-Files」ワークフローを選択します。
+*   「Run workflow」ボタンをクリックし、必要に応じて `dry_run` オプションを `true` または `false` に設定して実行します。
+*   ワークフローは、設定されたSecretsを使用して `settings.yaml` と `credentials.json` を動的に生成し、スクリプトを実行します。
 
-## GitHub Actions による自動実行
+## 設定ファイル (`settings.yaml`)
 
-このリポジトリには、`Move_Radigo-Files` という名前の GitHub Actions ワークフローが含まれており、スクリプトを自動実行することができます。
-
-### 実行トリガー
-
--   **手動実行 (`workflow_dispatch`)**: GitHub の Actions タブから手動でワークフローを実行できます。
-    -   `dry_run` パラメータ: 手動実行時に `true` を指定すると、ドライランモードで実行されます。デフォルトは `false` です。
--   **スケジュール実行 (コメントアウト中)**: `.github/workflows/move-radigo-files.yml` ファイル内のスケジュール実行の設定を有効にすることで、定期的にスクリプトを実行することも可能です (例: 毎日午前9時 JST)。
-
-### 必要な Secrets
-
-GitHub Actions でスクリプトを実行するためには、以下の Secrets をリポジトリに設定する必要があります。
-
--   `GOOGLE_CLIENT_ID`: Google Cloud Platform で作成した OAuth 2.0 クライアント ID。
--   `GOOGLE_CLIENT_SECRET`: Google Cloud Platform で作成した OAuth 2.0 クライアントシークレット。
--   `OUTPUT_FOLDER_ID`: Radigo の録音ファイルが保存されている Google Drive フォルダの ID。
--   `TARGET_FOLDER_PATH`: Google Drive 内での基本的な保存先パス。
--   `GOOGLE_CREDENTIALS_JSON`: Google Drive API の認証に使用する `credentials.json` の内容。これは、初回ローカル実行時に生成される `credentials.json` の中身をコピーして設定します。
-
-これらの Secrets は、リポジトリの「Settings」 > 「Secrets and variables」 > 「Actions」から設定できます。
+*   `client_config_backend`: 認証クライアント設定の読み込み方法 (`file` または `settings`)。
+*   `output_folder_id`: 処理対象のファイルが格納されているGoogle DriveのフォルダID。
+*   `target_folder_path`: ファイルの移動先となるGoogle Drive内のベースパス。
+*   `client_config_file`: `client_config_backend: file` の場合に、`client_secrets.json` ファイルへのパス。
+*   `client_config`: `client_config_backend: settings` の場合に、クライアントIDとシークレットを直接記述。
+*   `save_credentials`: 認証情報を保存するかどうか (True/False)。
+*   `save_credentials_backend`: 認証情報の保存方法 (`file`)。
+*   `save_credentials_file`: 保存する認証情報ファイルの名前 (例: `credentials.json`)。
+*   `get_refresh_token`: リフレッシュトークンを取得するかどうか (True/False)。
+*   `oauth_scope`: Google APIのアクセススコープ。
 
 ## ログ
 
-スクリプトの実行中に発生したイベントは、ログファイルに記録されます。
-ログファイルは、スクリプト実行時に `logs` ディレクトリ配下に `log_YYYYMMDDHHMMSS.txt` (重複時は `log_YYYYMMDDHHMMSS-XXX.txt`) という形式で保存されます。
+スクリプトの実行ログは、プロジェクトルートの `logs` ディレクトリ内に、実行日時を含むファイル名で保存されます。
+例: `logs/log_YYYYMMDDHHMMSS.txt`
 
-## エラー処理
+## ライセンス
 
--   スクリプト実行中にエラーが発生した場合、エラーメッセージがログファイルに記録されます。
--   Google Drive とのセッションが切れた場合、指定された回数まで自動的にセッションの再取得を試みます。
-
-## 注意事項
-
--   初回実行時には、ブラウザが起動し Google アカウントでの認証が求められます。認証を許可してください。
--   `client_secrets.json`、`settings.yaml` および `credentials.json` には認証情報が保存されるため、これらのファイルの取り扱いには十分注意してください。特に、Gitリポジトリに誤ってコミットしないように `.gitignore` に追加することを推奨します。
+このプロジェクトは [LICENSE](./LICENSE) のもとで公開されています。
