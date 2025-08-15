@@ -108,6 +108,9 @@ def organize_files(dry_run=False, max_retries=3):
                     {"folder": "40-サクラバシ919水曜", "weekday": 2, "hour": 23},
                     {"folder": "50-サクラバシ919木曜", "weekday": 3, "hour": 23}
                 ],
+                'SBS': [
+                    {"folder": "週刊！しゃべレーザー", "weekday": 4, "hour": 23}
+                ],
                 'RN1': [
                     {"folder": "Anime & Seiyu Music Night", "weekday": 0, "hour": 20}
                 ],
