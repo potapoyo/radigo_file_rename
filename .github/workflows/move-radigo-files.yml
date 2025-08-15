@@ -8,6 +8,10 @@ on:
         required: false
         default: false
         type: boolean
+      source_run_id:
+        description: 'Upstream run id (optional)'
+        required: false
+        type: string
   #schedule:
   #  - cron: '0 0 * * *' # 毎日午前0時 (UTC) に実行 (JST 午前9時)
 
